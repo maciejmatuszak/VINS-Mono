@@ -4,3 +4,5 @@ ex_calib_result.yaml
 vins_result.csv
 
 feature_tracker/CMakeLists\.txt\.user
+
+vins_estimator/CMakeLists\.txt\.user
