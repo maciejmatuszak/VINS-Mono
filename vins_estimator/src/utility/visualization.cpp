@@ -7,7 +7,7 @@ ros::Publisher pub_path, pub_loop_path;
 ros::Publisher pub_point_cloud, pub_margin_cloud;
 ros::Publisher pub_key_poses;
 
-ros::Publisher pub_camera_pose;
+ros::Publisher pub_camera_pose, pub_ref_pose;
 ros::Publisher pub_camera_pose_visual, pub_pose_graph;
 nav_msgs::Path path, loop_path;
 CameraPoseVisualization cameraposevisual(0, 0, 1, 1);
@@ -17,16 +17,17 @@ static Vector3d last_path(0.0, 0.0, 0.0);
 
 void registerPub(ros::NodeHandle &n)
 {
-    pub_latest_odometry = n.advertise<nav_msgs::Odometry>("imu_propagate", 1000);
-    pub_path = n.advertise<nav_msgs::Path>("path_no_loop", 1000);
-    pub_loop_path = n.advertise<nav_msgs::Path>("path", 1000);
-    pub_odometry = n.advertise<nav_msgs::Odometry>("odometry", 1000);
-    pub_point_cloud = n.advertise<sensor_msgs::PointCloud>("point_cloud", 1000);
-    pub_margin_cloud = n.advertise<sensor_msgs::PointCloud>("history_cloud", 1000);
-    pub_key_poses = n.advertise<visualization_msgs::Marker>("key_poses", 1000);
-    pub_camera_pose = n.advertise<geometry_msgs::PoseStamped>("camera_pose", 1000);
-    pub_camera_pose_visual = n.advertise<visualization_msgs::MarkerArray>("camera_pose_visual", 1000);
-    pub_pose_graph = n.advertise<visualization_msgs::MarkerArray>("pose_graph", 1000);
+    pub_latest_odometry = n.advertise<nav_msgs::Odometry>("imu_propagate", 1);
+    pub_path = n.advertise<nav_msgs::Path>("path_no_loop", 1);
+    pub_loop_path = n.advertise<nav_msgs::Path>("path", 1);
+    pub_odometry = n.advertise<nav_msgs::Odometry>("odometry", 1);
+    pub_point_cloud = n.advertise<sensor_msgs::PointCloud>("point_cloud", 1);
+    pub_margin_cloud = n.advertise<sensor_msgs::PointCloud>("history_cloud", 1);
+    pub_key_poses = n.advertise<visualization_msgs::Marker>("key_poses", 1);
+    pub_camera_pose = n.advertise<geometry_msgs::PoseStamped>("camera_pose", 1);
+    pub_ref_pose = n.advertise<geometry_msgs::PoseStamped>("ref_pose", 1);
+    pub_camera_pose_visual = n.advertise<visualization_msgs::MarkerArray>("camera_pose_visual", 1);
+    pub_pose_graph = n.advertise<visualization_msgs::MarkerArray>("pose_graph", 1);
 
     cameraposevisual.setScale(0.2);
     cameraposevisual.setLineWidth(0.01);
@@ -200,31 +201,57 @@ void pubKeyPoses(const Estimator &estimator, const std_msgs::Header &header, Eig
 void pubCameraPose(const Estimator &estimator, const std_msgs::Header &header, Eigen::Vector3d loop_correct_t,
                    Eigen::Matrix3d loop_correct_r)
 {
-    int idx2 = WINDOW_SIZE - 1;
     if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR)
     {
-        int i = idx2;
-        geometry_msgs::PoseStamped camera_pose;
-        camera_pose.header = header;
-        camera_pose.header.frame_id = std::to_string(estimator.Headers[i].stamp.toNSec());
-        Vector3d P = estimator.Ps[i] + estimator.Rs[i] * estimator.tic[0];
-        Quaterniond R = Quaterniond(estimator.Rs[i] * estimator.ric[0]);
-        P = (loop_correct_r * estimator.Ps[i] + loop_correct_t) + (loop_correct_r * estimator.Rs[i]) * estimator.tic[0];
-        R = Quaterniond((loop_correct_r * estimator.Rs[i]) * estimator.ric[0]);
-        camera_pose.pose.position.x = P.x();
-        camera_pose.pose.position.y = P.y();
-        camera_pose.pose.position.z = P.z();
-        camera_pose.pose.orientation.w = R.w();
-        camera_pose.pose.orientation.x = R.x();
-        camera_pose.pose.orientation.y = R.y();
-        camera_pose.pose.orientation.z = R.z();
+        {
+            //we use last prev key frame as fererence
+            int i = WINDOW_SIZE - 2;
+            geometry_msgs::PoseStamped camera_pose;
+            camera_pose.header = header;
+            // EXCEPTION we assume the topic name designate the pose name and we use frame_id to specify which timestamp it bolong
+            camera_pose.header.frame_id = std::to_string(estimator.Headers[i].stamp.toNSec());
+            Vector3d P = estimator.Ps[i] + estimator.Rs[i] * estimator.tic[0];
+            Quaterniond R = Quaterniond(estimator.Rs[i] * estimator.ric[0]);
+            P = (loop_correct_r * estimator.Ps[i] + loop_correct_t) + (loop_correct_r * estimator.Rs[i]) * estimator.tic[0];
+            R = Quaterniond((loop_correct_r * estimator.Rs[i]) * estimator.ric[0]);
+            camera_pose.pose.position.x = P.x();
+            camera_pose.pose.position.y = P.y();
+            camera_pose.pose.position.z = P.z();
+            camera_pose.pose.orientation.w = R.w();
+            camera_pose.pose.orientation.x = R.x();
+            camera_pose.pose.orientation.y = R.y();
+            camera_pose.pose.orientation.z = R.z();
 
-        pub_camera_pose.publish(camera_pose);
+            pub_ref_pose.publish(camera_pose);
+        }
 
-        cameraposevisual.reset();
-        cameraposevisual.add_pose(P, R);
-        camera_pose.header.frame_id = "world";
-        cameraposevisual.publish_by(pub_camera_pose_visual, camera_pose.header);
+        {
+            // we use latest key frame as current pose
+            int i = WINDOW_SIZE - 1;
+            geometry_msgs::PoseStamped camera_pose;
+            camera_pose.header = header;
+            // EXCEPTION we assume the topic name designate the pose name and we use frame_id to specify which timestamp it bolong
+            camera_pose.header.frame_id = std::to_string(estimator.Headers[i].stamp.toNSec());
+            Vector3d P = estimator.Ps[i] + estimator.Rs[i] * estimator.tic[0];
+            Quaterniond R = Quaterniond(estimator.Rs[i] * estimator.ric[0]);
+            P = (loop_correct_r * estimator.Ps[i] + loop_correct_t) + (loop_correct_r * estimator.Rs[i]) * estimator.tic[0];
+            R = Quaterniond((loop_correct_r * estimator.Rs[i]) * estimator.ric[0]);
+            camera_pose.pose.position.x = P.x();
+            camera_pose.pose.position.y = P.y();
+            camera_pose.pose.position.z = P.z();
+            camera_pose.pose.orientation.w = R.w();
+            camera_pose.pose.orientation.x = R.x();
+            camera_pose.pose.orientation.y = R.y();
+            camera_pose.pose.orientation.z = R.z();
+
+            pub_camera_pose.publish(camera_pose);
+
+            //while we are on it lets publish the camera symbol
+            cameraposevisual.reset();
+            cameraposevisual.add_pose(P, R);
+            camera_pose.header.frame_id = "world";
+            cameraposevisual.publish_by(pub_camera_pose_visual, camera_pose.header);
+        }
     }
 }
 
