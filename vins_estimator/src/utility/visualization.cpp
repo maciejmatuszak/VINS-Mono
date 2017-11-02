@@ -7,7 +7,8 @@ ros::Publisher pub_path, pub_loop_path;
 ros::Publisher pub_point_cloud, pub_margin_cloud;
 ros::Publisher pub_key_poses;
 
-ros::Publisher pub_camera_pose, pub_ref_pose;
+ros::Publisher pub_camera_pose, pub_ref_pose, pub_uav_pose;
+Quaterniond cameraToUav;
 ros::Publisher pub_camera_pose_visual, pub_pose_graph;
 nav_msgs::Path path, loop_path;
 CameraPoseVisualization cameraposevisual(0, 0, 1, 1);
@@ -25,9 +26,20 @@ void registerPub(ros::NodeHandle &n)
     pub_margin_cloud = n.advertise<sensor_msgs::PointCloud>("history_cloud", 1);
     pub_key_poses = n.advertise<visualization_msgs::Marker>("key_poses", 1);
     pub_camera_pose = n.advertise<geometry_msgs::PoseStamped>("camera_pose", 1);
+    pub_uav_pose = n.advertise<geometry_msgs::PoseStamped>("uav_pose", 1);
     pub_ref_pose = n.advertise<geometry_msgs::PoseStamped>("ref_pose", 1);
     pub_camera_pose_visual = n.advertise<visualization_msgs::MarkerArray>("camera_pose_visual", 1);
     pub_pose_graph = n.advertise<visualization_msgs::MarkerArray>("pose_graph", 1);
+
+    double roll, pitch, yaw;
+    n.param("rot_cam_uav_roll", roll, 0.0);
+    n.param("rot_cam_uav_pitch", pitch, 0.0);
+    n.param("rot_cam_uav_yaw", yaw, 0.0);
+    Eigen::AngleAxisd rollAngle(roll,Eigen::Vector3d::UnitX());
+    Eigen::AngleAxisd pitchAngle(pitch,Eigen::Vector3d::UnitY());
+    Eigen::AngleAxisd yawAngle(yaw,Eigen::Vector3d::UnitZ());
+    cameraToUav = rollAngle*pitchAngle*yawAngle;=
+    ROS_INFO("Camera to UAV Quaternion : X:%f; Y:%f; Z:%f; W:%f;", cameraToUav.x(), cameraToUav.y(), cameraToUav.z(), cameraToUav.w());
 
     cameraposevisual.setScale(0.2);
     cameraposevisual.setLineWidth(0.01);
@@ -245,6 +257,18 @@ void pubCameraPose(const Estimator &estimator, const std_msgs::Header &header, E
             camera_pose.pose.orientation.z = R.z();
 
             pub_camera_pose.publish(camera_pose);
+
+
+            geometry_msgs::PoseStamped uav_pose;
+            uav_pose.header.stamp = camera_pose.header.stamp;
+            uav_pose.header.frame_id = "vins_uav";
+            uav_pose.pose.position = camera_pose.pose.position;
+            Quaterniond RUav = cameraToUav *R;
+            uav_pose.pose.orientation.w = RUav.w();
+            uav_pose.pose.orientation.x = RUav.x();
+            uav_pose.pose.orientation.y = RUav.y();
+            uav_pose.pose.orientation.z = RUav.z();
+            pub_uav_pose.publish(uav_pose);
 
             //while we are on it lets publish the camera symbol
             cameraposevisual.reset();
