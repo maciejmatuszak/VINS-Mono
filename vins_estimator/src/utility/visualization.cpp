@@ -38,7 +38,7 @@ void registerPub(ros::NodeHandle &n)
     Eigen::AngleAxisd rollAngle(roll,Eigen::Vector3d::UnitX());
     Eigen::AngleAxisd pitchAngle(pitch,Eigen::Vector3d::UnitY());
     Eigen::AngleAxisd yawAngle(yaw,Eigen::Vector3d::UnitZ());
-    cameraToUav = rollAngle*pitchAngle*yawAngle;=
+    cameraToUav = rollAngle*pitchAngle*yawAngle;
     ROS_INFO("Camera to UAV Quaternion : X:%f; Y:%f; Z:%f; W:%f;", cameraToUav.x(), cameraToUav.y(), cameraToUav.z(), cameraToUav.w());
 
     cameraposevisual.setScale(0.2);
@@ -261,9 +261,11 @@ void pubCameraPose(const Estimator &estimator, const std_msgs::Header &header, E
 
             geometry_msgs::PoseStamped uav_pose;
             uav_pose.header.stamp = camera_pose.header.stamp;
-            uav_pose.header.frame_id = "vins_uav";
-            uav_pose.pose.position = camera_pose.pose.position;
-            Quaterniond RUav = cameraToUav *R;
+            uav_pose.header.frame_id = "world";
+            uav_pose.pose.position.x = camera_pose.pose.position.x;
+            uav_pose.pose.position.y = camera_pose.pose.position.y;
+            uav_pose.pose.position.z = camera_pose.pose.position.z;
+            Quaterniond RUav = R * cameraToUav;
             uav_pose.pose.orientation.w = RUav.w();
             uav_pose.pose.orientation.x = RUav.x();
             uav_pose.pose.orientation.y = RUav.y();
