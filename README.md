@@ -27,12 +27,12 @@ alt="Mobile platform" width="240" height="180" border="10" /></a>
 * **VINS-Mono: A Robust and Versatile Monocular Visual-Inertial State Estimator**, Tong Qin, Peiliang Li, Zhenfei Yang, Shaojie Shen [arXiv:1708.03852](https://arxiv.org/abs/1708.03852v1) 
 * **Autonomous Aerial Navigation Using Monocular Visual-Inertial Fusion**, Yi Lin, Fei Gao, Tong Qin, Wenliang Gao, Tianbo Liu, William Wu, Zhenfei Yang, Shaojie Shen, J Field Robotics. 2017;00:1–29. [https://doi.org/10.1002/rob.21732](https://doi.org/10.1002/rob.21732)  
 ```
-@misc{vins-mono,
-    author = "T. Qin and P. Li and Z. Yang and S. Shen",
-    title = "VINS-Mono",
-    howpublished = "\url{https://github.com/HKUST-Aerial-Robotics/VINS-Mono}",
-     year = {2017}
-    }
+@article{qin2017vins,
+  title={VINS-Mono: A Robust and Versatile Monocular Visual-Inertial State Estimator},
+  author={Qin, Tong and Li, Peiliang and Shen, Shaojie},
+  journal={arXiv preprint arXiv:1708.03852},
+  year={2017}
+}
 ```
 ```
 @article{Lin17,
@@ -135,6 +135,6 @@ We use [ceres solver](http://ceres-solver.org/) for non-linear optimization and 
 ## 7. Licence
 The source code is released under [GPLv3](http://www.gnu.org/licenses/) license.
 
-We are still working on improving the code reliability. For any technical issues, please contact Tong QIN <tong.qin@connect.ust.hk> or Peiliang LI <pliap@connect.ust.hk>.
+We are still working on improving the code reliability. For any technical issues, please contact Tong QIN <tong.qinATconnect.ust.hk> or Peiliang LI <pliapATconnect.ust.hk>.
 
-For commercial inquiries, please contact Shaojie SHEN <eeshaojie@ust.hk>
+For commercial inquiries, please contact Shaojie SHEN <eeshaojieATust.hk>
